@@ -1,0 +1,248 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+// Define constants
+#define MAX_HEALTH 100
+#define START_POINTS 100
+#define NUM_MINIONS 3
+#define RIDDLES_PER_MINION 3
+
+// Struct for Batman's stats
+typedef struct {
+    int health;
+    int points;
+    int hasBatmobile;
+    int batarangUses;
+} Batman;
+
+// Function prototypes
+void displayIntro();
+int solveRiddle(int riddleIndex, Batman *batman, int isFinalBoss);
+void upgradeCharacter(Batman *batman);
+int encounterMinion(Batman *batman, int minionNum);
+int encounterFinalBoss(Batman *batman);
+void displayStoryline(int minionNum);
+
+const char *riddles[NUM_MINIONS][RIDDLES_PER_MINION][3] = {
+    {
+        {"What has keys but can't open locks?", "keyboard", "Hint: It's something you type on."},
+        {"I speak without a mouth and hear without ears. What am I?", "echo", "Hint: It's something that repeats sounds."},
+        {"The more you take, the more you leave behind. What am I?", "footsteps", "Hint: It's something left after walking."}
+    },
+    {
+        {"What is so fragile that saying its name breaks it?", "silence", "Hint: It's the absence of sound."},
+        {"I am not alive, but I can grow; I don't have lungs, but I need air. What am I?", "fire", "Hint: It's something that can be extinguished."},
+        {"The more you have of it, the less you see. What is it?", "darkness", "Hint: It's the opposite of light."}
+    },
+    {
+        {"What is full of holes but still holds water?", "sponge", "Hint: It's something found in the kitchen."},
+        {"What has a neck but no head?", "bottle", "Hint: You drink from it."},
+        {"What can travel around the world while staying in a corner?", "stamp", "Hint: It's something you put on letters."}
+    }
+};
+
+const char *finalRiddle[3] = {
+    "I am taken from a mine, and shut up in a wooden case, from which I am never released. What am I?",
+    "pencil lead",
+    "Hint: It's something used for writing."
+};
+
+int main() {
+    srand(time(NULL)); // Seed random number generator
+    Batman batman = {MAX_HEALTH, START_POINTS, 0, 0}; // Initialize Batman stats
+    displayIntro();
+
+    // Check if the player wants to play
+    char playChoice;
+    printf("Do you have what it takes to defeat The Riddler and his minions? (y/n): ");
+    scanf(" %c", &playChoice);
+
+    if (playChoice != 'y') {
+        printf("Maybe next time, Batman!\n");
+        return 0; // Exit if the player does not want to play
+    }
+
+    // Display initial stats
+    printf("Initial Health: %d\n", batman.health);
+    printf("Initial Points: %d\n", batman.points);
+
+    // Encounter each minion
+    for (int i = 0; i < NUM_MINIONS; i++) {
+        displayStoryline(i + 1);
+        printf("\n--- Encounter with Minion %d ---\n", i + 1);
+
+        // Offer to use Batmobile to skip minion if available
+        if (batman.hasBatmobile) {
+            char choice;
+            printf("Do you want to use the Batmobile to skip this minion? (y/n): ");
+            scanf(" %c", &choice);
+            if (choice == 'y') {
+                printf("You used the Batmobile to skip Minion %d.\n", i + 1);
+                batman.hasBatmobile = 0; // Batmobile can only be used once
+                continue;
+            }
+        }
+
+        // Encounter minion (solve riddles)
+        if (!encounterMinion(&batman, i + 1)) {
+            printf("Game Over! Batman has fallen.\n");
+            return 0;
+        }
+
+        // Offer upgrade after defeating each minion
+        upgradeCharacter(&batman);
+    }
+
+    // Final Boss: The Riddler
+    printf("\n--- Final Boss: The Riddler ---\n");
+    if (!solveRiddle(-1, &batman, 1)) {
+        printf("Game Over! Batman has fallen to The Riddler.\n");
+    } else {
+        printf("Congratulations! Batman has defeated The Riddler!\n");
+    }
+
+    return 0;
+}
+
+// Display game introduction
+void displayIntro() {
+    printf("Welcome to Batman vs The Riddler - A Text Adventure!\n");
+    printf("You are Batman. Solve riddles, fight minions, and try to defeat The Riddler.\n");
+}
+
+// Function to display a unique storyline for each minion
+void displayStoryline(int minionNum) {
+    switch (minionNum) {
+        case 1:
+            printf("Minion 1: A shadowy figure appears, taunting you with riddles to weaken your resolve.\n");
+            break;
+        case 2:
+            printf("Minion 2: A former detective now loyal to The Riddler, skilled at trickery and deception.\n");
+            break;
+        case 3:
+            printf("Minion 3: A master hacker, unleashing mental challenges to break Batman’s will.\n");
+            break;
+        default:
+            printf("The Riddler: The final showdown begins. Face your ultimate nemesis.\n");
+            break;
+    }
+}
+
+// Function to simulate solving a riddle with options to buy or use a batarang for hints
+int solveRiddle(int riddleIndex, Batman *batman, int isFinalBoss) {
+    char answer[20];
+    int hintCount = 0;
+
+    while (1) {
+        // Display the riddle for minions
+        if (riddleIndex >= 0) {
+            printf("Minion %d: %s\n", riddleIndex + 1, riddles[riddleIndex][hintCount][0]);
+        } else { // Display the final riddle
+            printf("The Riddler: %s\n", finalRiddle[0]);
+        }
+
+        // Check if the player has hints available
+        if (batman->batarangUses > 0) {
+            char hintChoice;
+            printf("You have a Batarang available! Would you like to use it for a hint? (y/n): ");
+            scanf(" %c", &hintChoice);
+            if (hintChoice == 'y') {
+                printf("Hint: %s\n", (riddleIndex >= 0) ? riddles[riddleIndex][hintCount][2] : finalRiddle[2]);
+                batman->batarangUses--;
+            }
+        } else if (batman->points >= 20) {
+            // Offer to buy a Batarang if no Batarangs are available
+            char buyChoice;
+            printf("Would you like to buy a Batarang for a hint? (Costs 20 points) (y/n): ");
+            scanf(" %c", &buyChoice);
+            if (buyChoice == 'y') {
+                batman->points -= 20;
+                batman->batarangUses++;
+                printf("Hint: %s\n", (riddleIndex >= 0) ? riddles[riddleIndex][hintCount][2] : finalRiddle[2]);
+            }
+        }
+
+        // Prompt for the answer
+        printf("Your answer: ");
+        scanf("%s", answer);
+
+        // Check if the answer is correct
+        if (strcmp(answer, (riddleIndex >= 0) ? riddles[riddleIndex][hintCount][1] : finalRiddle[1]) == 0) {
+            printf("Correct!\n");
+            batman->points += 10; // Gain points for correct answer
+            printf("You now have %d points.\n", batman->points);
+            return 1; // Move on to the next riddle
+        } else {
+            int healthLost = 20; // Health lost for wrong answer
+            batman->health -= healthLost;
+            printf("Incorrect. You lost %d health. Current Health: %d\n", healthLost, batman->health);
+            if (batman->health <= 0) return 0; // Game over if health is 0
+            
+            // Check if the second hint is available
+            if (hintCount < 2 && batman->points >= 20) {
+                char secondHintChoice;
+                printf("Would you like to buy a second Batarang for another hint? (Costs 20 points) (y/n): ");
+                scanf(" %c", &secondHintChoice);
+                if (secondHintChoice == 'y') {
+                    batman->points -= 20;
+                    batman->batarangUses++;
+                    printf("Hint: %s\n", (riddleIndex >= 0) ? riddles[riddleIndex][hintCount + 1][2] : finalRiddle[2]);
+                    hintCount++;
+                }
+            }
+        }
+    }
+}
+
+// Function to upgrade Batman's character
+void upgradeCharacter(Batman *batman) {
+    printf("\n--- Upgrade Options ---\n");
+    printf("1: Batmobile (Gain a one-time skip for a minion, costs 80 points)\n");
+    printf("2: Batarang (Gain another hint, costs 20 points)\n");
+    printf("Your choice (1/2): ");
+    char choice;
+    scanf(" %c", &choice);
+
+    if (choice == '1' && batman->points >= 80) {
+        batman->hasBatmobile = 1;
+        batman->points -= 80;
+        printf("You upgraded to the Batmobile! Points left: %d\n", batman->points);
+    } else if (choice == '2' && batman->points >= 20) {
+        batman->batarangUses++;
+        batman->points -= 20;
+        printf("You purchased a Batarang! Points left: %d\n", batman->points);
+    } else {
+        printf("Insufficient points or invalid choice. Skipping upgrade.\n");
+    }
+}
+
+// Function to encounter a minion
+int encounterMinion(Batman *batman, int minionNum) {
+    for (int i = 0; i < RIDDLES_PER_MINION; i++) {
+        if (!solveRiddle(minionNum - 1, batman, 0)) {
+            return 0; // Game over if health is 0
+        }
+    }
+    return 1; // Successfully defeated the minion
+}
+
+// Function to handle the final boss
+int encounterFinalBoss(Batman *batman) {
+    printf("\n--- Final Boss: The Riddler ---\n");
+    char answer[20];
+
+    // Final Riddle
+    printf("The Riddler: %s\n", finalRiddle[0]);
+    printf("Your answer: ");
+    scanf("%s", answer);
+
+    if (strcmp(answer, finalRiddle[1]) == 0) {
+        printf("Congratulations! You have defeated The Riddler!\n");
+        return 1; // Player wins
+    } else {
+        printf("Incorrect. The Riddler has won this time.\n");
+        return 0; // Player loses
+    }
+}
